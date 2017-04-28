@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+    margin: 0;
+}
+
+.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.2px;
+}
+
+circle {
+  fill: #ccc;
+  stroke: #333;
+  stroke-width: 1.2px;
+}
+
+
+.emptyFile circle {
+    fill: #fff;
+    stroke: #ccc;
+    stroke-width: 1px;
+    stroke-dasharray: 1 2;
+}
+
+line.emptyFile {
+    fill: none;
+    stroke: #bbb;
+    stroke-width: 1.2px;
+    stroke-dasharray: 1 2;
+}
+
+text {
+  font: 10px sans-serif;
+  pointer-events: none;
+  font-size: 0.8em;
+}
+
+.I text.props {
+    fill: #c2f442 !important;
+}
+
+.RW text.props {
+    fill: #618ee8 !important;
+}
+
+.R text.props {
+    fill: #ff6938 !important;
+}
+
+.I.R text.props {
+    fill: #E1AF3D !important;
+}
+
+.I.RW text.props {
+    fill: #92C195 !important;
+}
+
+.RW.R text.props {
+    fill: #B07C90 !important;
+}
+
+.I.RW.R text.props {
+    fill: #C99667 !important;
+}
+
+.emptyFile .props {
+    fill: #eee;
+}
+
+</style>
+<body>
+
+<button onclick="document.querySelectorAll('.emptyFile').forEach((el) => el.style.display = 'none')">Hide Empty</button>
+<button onclick="document.querySelectorAll('.emptyFile').forEach((el) => el.style.display = '')">Show Empty</button>
+
+<!--document.querySelectorAll('g:not(.O)').forEach((el) => el.style.display = 'none')-->
+
+<button onclick="document.querySelectorAll('g:not(.O), line:not(.O)').forEach((el) => el.style.display = 'none')">Hide w/o O</button>
+<button onclick="document.querySelectorAll('g:not(.O), line:not(.O)').forEach((el) => el.style.display = '')">Show All</button>
+
+<!-- <script src="d3.v4.min.js"></script> -->
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var body = document.body,
+    html = document.documentElement;
+
+var height = Math.max( body.scrollHeight, body.offsetHeight,
+                       html.clientHeight, html.scrollHeight, html.offsetHeight );
+
+var width = Math.max( body.scrollWidth, body.offsetWidth,
+                       html.clientWidth, html.scrollWidth, html.offsetWidth );
+
+var h = height - 30,
+    w = body.offsetWidth - 17;
+
+var vis = d3.select("body").append("svg:svg")
+    .attr("width", w)
+    .attr("height", h);
+
+d3.json("links.json", function(data) {
+    var nodes = {};
+
+    var links = data.links;
+
+    links.forEach(function(link) {
+        link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+        link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+    });
+
+    Object.keys(nodes).forEach((k) => {
+        nodes[k].props = data.nodes[k].props;
+        nodes[k].stat = data.nodes[k].stat
+    })
+
+    //var links = links.filter((d) => { return !!d.target.name });
+
+    var force = self.force = d3.layout.force()
+        .nodes(d3.values(nodes))
+        .links(links)
+        .gravity(.05)
+        .distance(100)
+        .charge(-100)
+        .size([w, h])
+        .start();
+
+    vis.append("defs").selectAll("marker")
+        .data(["suit", "empty", "resolved"])
+        .enter().append("marker")
+        .attr("id", function(d) { return d; })
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 15)
+        .attr("refY", -1.5)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-5L10,0L0,5");
+
+   /* var path = vis.append("g").selectAll("path")
+        .data(links)
+        .enter().append("path")
+        .attr("class", function(d) { return "link suit" })
+        .attr("marker-end", function(d) { return "url(#suit)"; });
+*/
+
+    var link = vis.selectAll("line.link")
+        .data(links)
+        .enter().append("svg:line")
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+        .attr("marker-end", function(d) { return "url(#suit)"; })
+        .attr("class", (function(n) {
+                    var f = function(d) {
+                        return 'link ' + (n[d.target.name].props.emptyFile ? 'emptyFile ' : '') + n[d.target.name].props.content.join(' ');
+                    };
+                    return(f)}
+                )(nodes));
+
+    var node_drag = d3.behavior.drag()
+        .on("dragstart", dragstart)
+        .on("drag", dragmove)
+        .on("dragend", dragend);
+
+    function dragstart(d, i) {
+        force.stop() // stops the force auto positioning before you start dragging
+    }
+
+    function dragmove(d, i) {
+        d.px += d3.event.dx;
+        d.py += d3.event.dy;
+        d.x += d3.event.dx;
+        d.y += d3.event.dy;
+        tick(); // this is the key to make it work together with updating both px,py,x,y on d !
+    }
+
+    function dragend(d, i) {
+        d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
+        tick();
+        force.resume();
+    }
+
+
+    var node = vis.selectAll("g.node")
+        .data(d3.values(nodes))
+        .enter().append("svg:g")
+        .attr("class", function(d) {
+                return 'node ' + (d.props.emptyFile ? 'emptyFile ' : '') + d.props.content.join(' ');
+            })
+        .call(node_drag);
+
+
+    node.append("svg:circle")
+        .on("dblclick", function(d) {
+                if (d.fixed) {
+                    d.fixed = false;
+                }
+            })
+        .attr("r", "6");
+
+    node.append("svg:text")
+        .attr("class", "nodetext")
+        .attr("dx", 12)
+        .attr("dy", "-1em")
+        .text(function(d) { return d.name });
+
+    node.append("svg:text")
+        .attr("class", "nodetext")
+        .attr("dx", 12)
+        .attr("dy", "0em")
+        .attr("class", function(d) {
+                return 'props';
+            })
+        .text(function(d) {
+                return [d.stat.lineCount].concat(d.props.content).join(' ');
+            });
+
+    force.on("tick", tick);
+
+    function tick() {
+     // path.attr("d", linkArc);
+      link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+
+      node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+    };
+
+    /*function linkArc(d) {
+        var dx = d.target.x - d.source.x,
+        dy = d.target.y - d.source.y,
+        dr = Math.sqrt(dx * dx + dy * dy);
+        return "M " + d.source.x + "," + d.source.y + " A " + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+    }
+*/
+
+});
+
+</script>
