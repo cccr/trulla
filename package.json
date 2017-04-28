@@ -1,0 +1,27 @@
+{
+  "name": "trulla",
+  "version": "0.0.2",
+  "description": "Apache HTTP Server config explorer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "trulla": "./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/cccr/trulla.git"
+  },
+  "keywords": [
+    "apache",
+    "http",
+    "httpd"
+  ],
+  "author": "Pavel Korshunov <pa.korshunov.npm@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cccr/trulla/issues"
+  },
+  "homepage": "https://github.com/cccr/trulla#readme"
+}
