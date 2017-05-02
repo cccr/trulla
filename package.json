@@ -1,6 +1,6 @@
 {
   "name": "trulla",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Apache HTTP Server config explorer",
   "main": "index.js",
   "scripts": {
